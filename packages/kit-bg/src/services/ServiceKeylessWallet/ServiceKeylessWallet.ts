@@ -317,6 +317,15 @@ class ServiceKeylessWallet extends ServiceBase {
     await this.backgroundApi.serviceKeylessCloudSync.setPersistedCurrentCloudSyncKeylessWalletId(
       result.wallet.id,
     );
+    void this.backgroundApi.servicePrimeCloudSync
+      .syncNowKeyless({
+        callerName: 'Create Keyless Wallet',
+        noDebounceUpload: true,
+        password,
+      })
+      .catch((error) => {
+        errorUtils.autoPrintErrorIgnore(error);
+      });
     return result;
   }
 
