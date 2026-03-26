@@ -25,6 +25,7 @@ import type {
 } from '@onekeyhq/shared/types/socket';
 import { EAppSocketEventNames } from '@onekeyhq/shared/types/socket';
 
+import { writeSpotMarketRealtimeDiagnostic } from '../../../diagnostics/spotMarketRealtimeDiagnostics';
 import { getEndpointInfo } from '../../../endpoints';
 import { notificationStatusAtom } from '../../../states/jotai/atoms/notifications';
 
@@ -83,6 +84,14 @@ export class PushProviderWebSocket extends PushProviderBase {
       'PushProviderWebSocket endpoint',
       endpoint,
     );
+    writeSpotMarketRealtimeDiagnostic({
+      event: 'notification_ws_init',
+      payload: {
+        endpoint,
+      },
+      throttleKey: 'notification-ws:init',
+      throttleMs: 5000,
+    });
     // TODO init timeout
     this.socket = io(endpoint, {
       transports: ['websocket'],
@@ -96,6 +105,13 @@ export class PushProviderWebSocket extends PushProviderBase {
         'WebSocket 连接成功',
         this.socket?.id,
       );
+      writeSpotMarketRealtimeDiagnostic({
+        event: 'notification_ws_connect',
+        payload: {
+          socketId: this.socket?.id,
+          connected: this.socket?.connected ?? false,
+        },
+      });
       this.eventEmitter.emit(EPushProviderEventNames.ws_connected, {
         socketId: this.socket?.id,
         socket: this.socket,
@@ -112,18 +128,51 @@ export class PushProviderWebSocket extends PushProviderBase {
         'WebSocket 连接错误:',
         error,
       );
+      writeSpotMarketRealtimeDiagnostic({
+        event: 'notification_ws_connect_error',
+        payload: {
+          error,
+          connected: this.socket?.connected ?? false,
+        },
+        throttleKey: 'notification-ws:connect-error',
+        throttleMs: 15_000,
+      });
     });
     this.socket.on('error', (error) => {
       defaultLogger.notification.websocket.consoleLog('WebSocket 错误:', error);
+      writeSpotMarketRealtimeDiagnostic({
+        event: 'notification_ws_error',
+        payload: {
+          error,
+          connected: this.socket?.connected ?? false,
+        },
+        throttleKey: 'notification-ws:error',
+        throttleMs: 15_000,
+      });
     });
     this.socket.on('reconnect', (_payload) => {
       defaultLogger.notification.websocket.consoleLog('WebSocket 重新连接成功');
+      writeSpotMarketRealtimeDiagnostic({
+        event: 'notification_ws_reconnect',
+        payload: {
+          socketId: this.socket?.id,
+          connected: this.socket?.connected ?? false,
+        },
+      });
     });
     this.socket.on('disconnect', (reason) => {
       defaultLogger.notification.websocket.consoleLog(
         'WebSocket 连接断开',
         reason,
       );
+      writeSpotMarketRealtimeDiagnostic({
+        event: 'notification_ws_disconnect',
+        payload: {
+          reason,
+          socketId: this.socket?.id,
+          connected: this.socket?.connected ?? false,
+        },
+      });
       void notificationStatusAtom.set(
         (v): INotificationStatusAtomData => ({
           ...v,

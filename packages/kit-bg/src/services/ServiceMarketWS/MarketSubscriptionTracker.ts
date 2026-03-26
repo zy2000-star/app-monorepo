@@ -10,12 +10,15 @@ export type ISubscription = {
   currency?: string;
   connectionCount: number;
   dataCount: number;
+  lastConsumedAt: number;
 };
 
 export class MarketSubscriptionTracker {
   private subscriptions: ISubscription[] = [];
 
   private static readonly DATA_COUNT_THRESHOLD = 100;
+
+  private static readonly OHLCV_INACTIVITY_TIMEOUT_MS = 30_000;
 
   addSubscription({
     address,
@@ -49,6 +52,7 @@ export class MarketSubscriptionTracker {
         currency,
         connectionCount: 1,
         dataCount: 0,
+        lastConsumedAt: Date.now(),
       });
     }
   }
@@ -127,6 +131,7 @@ export class MarketSubscriptionTracker {
     );
     if (existing) {
       existing.dataCount = 0;
+      existing.lastConsumedAt = Date.now();
       return true;
     }
     return false;
@@ -188,6 +193,37 @@ export class MarketSubscriptionTracker {
       address,
       type,
       threshold: MarketSubscriptionTracker.DATA_COUNT_THRESHOLD,
+    });
+  }
+
+  shouldUnsubscribeByInactivity({
+    address,
+    type,
+    timeoutMs,
+  }: {
+    address: string;
+    type: ISubscriptionType;
+    timeoutMs: number;
+  }): boolean {
+    const existing = this.subscriptions.find(
+      (sub) => sub.address === address && sub.type === type,
+    );
+    if (!existing) {
+      return false;
+    }
+
+    return Date.now() - existing.lastConsumedAt >= timeoutMs;
+  }
+
+  shouldUnsubscribeOhlcvByDefaultInactivity({
+    address,
+  }: {
+    address: string;
+  }): boolean {
+    return this.shouldUnsubscribeByInactivity({
+      address,
+      type: 'ohlcv' as ISubscriptionType,
+      timeoutMs: MarketSubscriptionTracker.OHLCV_INACTIVITY_TIMEOUT_MS,
     });
   }
 

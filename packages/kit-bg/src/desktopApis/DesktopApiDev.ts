@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
+import * as os from 'os';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 
@@ -40,6 +41,25 @@ class DesktopApiDev {
 
   async openLoggerFile(): Promise<void> {
     await shell.openPath(path.dirname(logger.transports.file.getFile().path));
+  }
+
+  async appendDiagnosticLineToDesktop(params: {
+    fileName: string;
+    line: string;
+  }): Promise<{ filePath: string }> {
+    const fileName = path
+      .basename(params.fileName || 'diagnostic.log')
+      .replace(/[^\w.-]/g, '_');
+    const desktopDir = path.join(os.homedir(), 'Desktop');
+    const filePath = path.join(desktopDir, fileName);
+    const content = params.line.endsWith('\n')
+      ? params.line
+      : `${params.line}\n`;
+
+    await fsPromises.mkdir(desktopDir, { recursive: true });
+    await fsPromises.appendFile(filePath, content, 'utf8');
+
+    return { filePath };
   }
 
   async exportLoggerZip(params: {

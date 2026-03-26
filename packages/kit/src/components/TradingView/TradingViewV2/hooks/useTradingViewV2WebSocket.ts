@@ -135,6 +135,9 @@ export function useTradingViewV2WebSocket({
               },
             });
 
+            // Treat processed realtime updates as an OHLCV keepalive so the
+            // background subscription can distinguish active throttled charts
+            // from abandoned listeners.
             void backgroundApiProxy.serviceMarketWS.clearDataCount({
               address: tokenAddress,
               type: 'ohlcv',
@@ -179,9 +182,8 @@ export function useTradingViewV2WebSocket({
     };
   }, [networkId, tokenAddress, webRef, enabled, tokenDetailActions]);
 
-  // Re-subscribe when browser tab becomes visible again
-  // Auto-unsubscribe may have killed the subscription while tab was in background
-  // (UI-side clearDataCount stops being called → dataCount reaches threshold)
+  // Re-subscribe when browser tab becomes visible again in case the OHLCV
+  // subscription was released after a long period without consumption.
   useEffect(() => {
     if (!enabled || !networkId || !tokenAddress) {
       return;
