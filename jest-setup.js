@@ -4,8 +4,6 @@
 // FIX:     ReferenceError: self is not defined
 globalThis.self = globalThis.self || globalThis;
 
-const MockMMKV = require('./apps/desktop/app/libs/react-native-mmkv-mock');
-
 class LocalStorageMock {
   constructor() {
     this.store = {};
@@ -28,11 +26,22 @@ class LocalStorageMock {
   }
 }
 
-globalThis.localStorage = new LocalStorageMock();
-globalThis.$$onekeyAppStorage = new LocalStorageMock();
+Object.defineProperty(globalThis, 'localStorage', {
+  value: new LocalStorageMock(),
+  configurable: true,
+  writable: true,
+});
+Object.defineProperty(globalThis, '$$onekeyAppStorage', {
+  value: new LocalStorageMock(),
+  configurable: true,
+  writable: true,
+});
+globalThis.window = globalThis.window || globalThis;
 globalThis.addEventListener = jest.fn;
 globalThis.fetch = require('node-fetch');
 globalThis.WebSocket = require('isomorphic-ws');
+
+const MockMMKV = require('./apps/desktop/app/libs/react-native-mmkv-mock');
 
 if (typeof structuredClone === 'undefined') {
   globalThis.structuredClone = require('@ungap/structured-clone').default;
